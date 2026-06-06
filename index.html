@@ -1261,6 +1261,13 @@ async function saveClient(){
     await setDoc(doc(db,"tenants",tenantId,"private","auth"),{masterPass:adminPass,createdAt:Date.now()});
     // Grava _mp no root do tenant — lido pela rule sem expor /private/
     await setDoc(doc(db,"tenants",tenantId),{_mp:adminPass},{merge:true});
+    // ✅ CORREÇÃO 1a: garante appdata/main com ordersOpen:true desde o início
+    // Sem este documento o addDoc de pedidos é bloqueado pela Firestore rule (ordersAreOpen)
+    await setDoc(doc(db,"tenants",tenantId,"appdata","main"),{
+      ordersOpen:true,
+      _auth:adminPass,
+      _ts:Date.now()
+    },{merge:true});
     DB.clients.push({id:tenantId,...tenantData,masterPass:adminPass});
     save();refreshAll();
     // Prepara variáveis para geração do ZIP
@@ -1568,11 +1575,11 @@ async function downloadZip(){
         });
     }
 
-    // Timeout: se em 8s o core não carregar → bloqueia
+    // ✅ CORREÇÃO 3: core não-bloqueante — timeout apenas loga, não trava o app
+    // O core é auxiliar (flags, banners) e nunca deve impedir pedidos nem o boot
     var _coreTimeout = setTimeout(function(){
       if(!window._PEDIX_CORE_LOADED){
-        console.error("[Pedix Core] Timeout — bloqueando app.");
-        _showUpdateBlock();
+        console.warn("[Pedix Core] Timeout — core não carregado, app continua normalmente.");
       }
     }, 8000);
 
@@ -1585,8 +1592,8 @@ async function downloadZip(){
       },
       function(){ // todas as fontes falharam
         clearTimeout(_coreTimeout);
-        console.error("[Pedix Core] ❌ Todas as fontes falharam.");
-        _showUpdateBlock();
+        // ✅ CORREÇÃO 3: não bloqueia — app funciona sem core
+        console.warn("[Pedix Core] ❌ Todas as fontes falharam — continuando sem core.");
       }
     );
   })();
@@ -1903,12 +1910,45 @@ function renderLicenses(){
       ${fbId
         ?`<a class="fb-link" href="https://console.firebase.google.com/project/${fbId}/firestore" target="_blank">🔥 Abrir Firestore do cliente (${fbId})</a>`
         :`<div style="font-size:12px;color:var(--muted);margin-bottom:12px">⚠ Firebase Project ID não cadastrado — <button onclick="openClientModal('${c.id}')" style="background:none;border:none;color:var(--accent);font-size:12px;cursor:pointer;font-family:var(--font-body)">editar cliente</button></div>`}
+      <div style="margin-bottom:12px">
+        <button class="btn btn-ghost btn-sm" onclick="repairAppdata('${c.id}')" style="font-size:11px;display:inline-flex;align-items:center;gap:6px">
+          🔧 Reparar appdata/main
+        </button>
+        <div style="font-size:10px;color:var(--muted);margin-top:4px">Use se o cliente não recebe pedidos. Garante ordersOpen:true no Firestore.</div>
+      </div>
       <div class="code-wrap">
         <div class="code-block" id="code-${c.id}">${escHtml(code)}</div>
         <button class="code-copy-btn" onclick="copyCode('${c.id}')">📋 Copiar</button>
       </div>
     </div>`;
   }).join("");
+}
+
+/* ── REPARO appdata/main — Correção 1b ── */
+async function repairAppdata(cid){
+  const c=DB.clients.find(x=>x.id===cid);
+  if(!c){toast("Cliente não encontrado ❌");return;}
+  if(!window._FS){toast("⚠ Firebase não conectado");return;}
+  const tenantId=c.id||c.tenantId;
+  const masterPass=c.masterPass||c.adminPass||"";
+  if(!masterPass){toast("⚠ Senha mestre não encontrada — edite o cliente e defina a senha primeiro");return;}
+  try{
+    const{db,doc,setDoc,getDoc}=window._FS;
+    const snap=await getDoc(doc(db,"tenants",tenantId,"appdata","main"));
+    const exists=snap.exists();
+    // merge:true garante que não apaga dados existentes (cardápio, config)
+    await setDoc(doc(db,"tenants",tenantId,"appdata","main"),{
+      ordersOpen:true,
+      _auth:masterPass,
+      _repairedAt:Date.now()
+    },{merge:true});
+    toast(exists
+      ? "✅ appdata/main atualizado — ordersOpen:true garantido!"
+      : "✅ appdata/main criado com ordersOpen:true!");
+  }catch(e){
+    toast("⚠ Erro ao reparar: "+e.message);
+    console.error("[repairAppdata]",e);
+  }
 }
 
 function escHtml(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
