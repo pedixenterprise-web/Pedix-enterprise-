@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Pedix Manager v1.2.0 — Painel de Assinaturas</title>
+<title>Pedix Manager v1.2.2 — Painel de Assinaturas</title>
 <link rel="manifest" href="manifest.json">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -318,7 +318,7 @@ input,select,textarea{font-family:var(--font-body);outline:none}
 
 <div id="loading">
   <div class="ld-logo">Pedix<span>Manager</span></div>
-  <div style="font-size:10px;color:var(--muted);margin-top:4px;font-family:'DM Mono',monospace">v1.2.0</div>
+  <div style="font-size:10px;color:var(--muted);margin-top:4px;font-family:'DM Mono',monospace">v1.2.2</div>
   <div class="ld-bar"><div class="ld-bar-fill"></div></div>
   
   <div id="ld-err" style="display:none" class="ld-err">
@@ -333,7 +333,7 @@ input,select,textarea{font-family:var(--font-body);outline:none}
 <div id="login-ov">
   <div class="login-box">
     <div class="login-logo">Pedix<span>Manager</span></div>
-    <div style="font-size:10px;color:#555;text-align:center;margin-top:-8px;margin-bottom:4px;font-family:'DM Mono',monospace">v1.2.0</div>
+    <div style="font-size:10px;color:#555;text-align:center;margin-top:-8px;margin-bottom:4px;font-family:'DM Mono',monospace">v1.2.2</div>
     <div class="login-sub">Painel privado de assinaturas</div>
     <input class="lin" id="l-user" type="email" placeholder="Email" autocomplete="email">
     <input class="lin" id="l-pass" type="password" placeholder="Senha" autocomplete="current-password">
@@ -492,7 +492,7 @@ input,select,textarea{font-family:var(--font-body);outline:none}
 <!-- APP -->
 <div id="app">
   <div class="topbar">
-    <div class="tb-logo">Pedix<span>Manager</span> <span style="font-size:10px;font-family:'DM Mono',monospace;color:var(--muted);font-weight:400">v1.2.0</span></div>
+    <div class="tb-logo">Pedix<span>Manager</span> <span style="font-size:10px;font-family:'DM Mono',monospace;color:var(--muted);font-weight:400">v1.2.2</span></div>
     <div class="tb-right">
       <div class="tb-badge" id="tb-exp">⚠ 0 vencendo</div>
       <div class="tb-badge" id="tb-user" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
@@ -1218,7 +1218,7 @@ async function saveClient(){
           await setDoc(doc(db,"tenants",editClientId,"private","auth"),{masterPass:newPassInput,updatedAt:Date.now()},{merge:true});
           // Atualiza _mp no root do tenant — lido pela rule
           await setDoc(doc(db,"tenants",editClientId),{_mp:newPassInput},{merge:true});
-        }catch(_){}
+        }catch(e){ toast("⚠ Erro ao salvar senha mestre no Firestore: "+e.message); console.error("[Pedix] masterPass update failed:",e.code,e.message); }
       }
     } else if(adminPassAtual){
       c.masterPass=adminPassAtual;  // nunca apaga a senha mestre ao editar sem nova senha
@@ -1363,7 +1363,8 @@ async function deleteClient(){
       try{ await deleteDoc(doc(db,"tenants",tenantId,"private","auth")); }catch(_){}
       await deleteDoc(doc(db,"tenants",tenantId));
     }catch(e){
-      
+      toast("⚠ Erro ao excluir no Firestore: "+e.message);
+      console.error("[Pedix] deleteClient Firestore error:",e.code,e.message);
     }
   }
   // Remove do estado local
@@ -1528,23 +1529,6 @@ async function downloadZip(){
       return;
     }
 
-    // Tela de bloqueio quando core não está disponível
-    function _showUpdateBlock(){
-      if(document.getElementById("__pedix_update")) return;
-      var d=document.createElement("div");
-      d.id="__pedix_update";
-      d.style.cssText="position:fixed;inset:0;z-index:999999;background:#eef3fa;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font-family:sans-serif;text-align:center;padding:24px";
-      d.innerHTML='<div style="font-size:64px">🔄</div>'
-        +'<div style="font-size:22px;font-weight:800;color:#0d2a4a">Atualização necessária</div>'
-        +'<div style="font-size:14px;color:#5a7fa0;max-width:320px;line-height:1.7">'
-        +'Este app precisa se conectar ao servidor para receber atualizações.<br>'
-        +'Verifique sua conexão e tente novamente.</div>'
-        +'<button onclick="location.reload()" style="background:#e6a800;color:#fff;border:none;border-radius:12px;padding:13px 32px;font-size:14px;font-weight:700;cursor:pointer;margin-top:4px">↺ Tentar novamente</button>';
-      // Aguarda body estar disponível
-      if(document.body){ document.body.appendChild(d); }
-      else { document.addEventListener("DOMContentLoaded",function(){ document.body.appendChild(d); }); }
-    }
-
     // Carrega o core.js de uma URL específica
     function _loadScript(url, onOk, onFail){
       var s=document.createElement("script");
@@ -1695,7 +1679,7 @@ async function saveAppUrl(){
   const tenantId=window._currentTenantId;
   const baseUrl=appUrl.split("?")[0];
   const appLink=baseUrl;
-  if(window._FS){const{db,doc,setDoc}=window._FS;setDoc(doc(db,"tenants",tenantId),{appUrl:baseUrl,appLink},{merge:true}).catch(()=>{});}
+  if(window._FS){const{db,doc,setDoc}=window._FS;setDoc(doc(db,"tenants",tenantId),{appUrl:baseUrl,appLink},{merge:true}).catch(e=>{ toast("⚠ Erro ao salvar link no Firestore: "+e.message); console.error("[Pedix] saveAppUrl failed:",e.code,e.message); });}
   const c=DB.clients.find(x=>x.id===tenantId);
   if(c){c.appUrl=baseUrl;c.appLink=appLink;}
   save();refreshAll();
