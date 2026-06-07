@@ -19,7 +19,7 @@
      ═══════════════════════════════════════════════════════ -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, addDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, addDoc, deleteDoc, getDocs, query, where, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updatePassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 const firebaseConfig = {
   apiKey:"AIzaSyBHrcmGfLi_1csi3pWTkpnbsjli6J6ksbE",
@@ -33,7 +33,7 @@ try {
   const app=initializeApp(firebaseConfig);
   const db=getFirestore(app);
   const auth=getAuth(app);
-  window._FS={db,auth,doc,setDoc,getDoc,onSnapshot,collection,addDoc,deleteDoc,signInWithEmailAndPassword,signOut,sendPasswordResetEmail,updatePassword};
+  window._FS={db,auth,doc,setDoc,getDoc,onSnapshot,collection,addDoc,deleteDoc,getDocs,query,where,updateDoc,signInWithEmailAndPassword,signOut,sendPasswordResetEmail,updatePassword};
   window._fsReady=true;
   // Dispara fsReady somente após boot() estar disponível no script principal
   const _dispatchReady=()=>{
@@ -432,6 +432,37 @@ input,select,textarea{font-family:var(--font-body);outline:none}
       </div>
     </div>
     <div class="field" style="margin-bottom:10px"><label>🔥 Firebase Project ID do cliente</label><input id="mc-fbprojectid" placeholder="Ex: meu-app-12345" autocomplete="off" style="font-family:var(--font-mono);font-size:12px"><div style="font-size:11px;color:var(--muted);margin-top:4px">Opcional — usado para o link direto ao Firestore do cliente na aba Bloqueios</div></div>
+    <!-- ── MÓDULO MOTOBOY ── -->
+    <div style="background:rgba(26,127,196,.07);border:1px solid rgba(26,127,196,.25);border-radius:10px;padding:12px;margin-bottom:10px">
+      <!-- Cabeçalho com toggle -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.6px">🛵 Módulo Motoboy</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">Ativa entrega com motoboy local no app do lojista</div>
+        </div>
+        <label style="position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0;margin-left:12px">
+          <input type="checkbox" id="mc-modulo-motoboy" onchange="toggleMotoboy(this.checked)"
+            style="opacity:0;width:0;height:0;position:absolute">
+          <span id="mc-motoboy-track" style="position:absolute;cursor:pointer;inset:0;border-radius:24px;transition:.3s;background:var(--border)">
+            <span id="mc-motoboy-thumb" style="position:absolute;height:18px;width:18px;left:3px;bottom:3px;border-radius:50%;transition:.3s;background:#fff"></span>
+          </span>
+        </label>
+      </div>
+      <!-- Badge de status -->
+      <div id="mc-motoboy-badge" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;margin-bottom:10px;background:rgba(107,107,136,.12);color:var(--muted);border:1px solid var(--border)">
+        <span style="width:6px;height:6px;border-radius:50%;background:var(--muted);display:inline-block"></span> Desativado
+      </div>
+      <!-- Campos da loja -->
+      <div class="field" style="margin-bottom:8px"><label>Endereço da loja</label><input id="mc-endereco-loja" placeholder="Rua X, 123 - Centro" autocomplete="off"></div>
+      <div class="row2" style="gap:8px">
+        <div class="field" style="margin-bottom:8px"><label>Latitude</label><input id="mc-lat-loja" type="number" step="any" placeholder="-16.6869" autocomplete="off" style="font-family:var(--font-mono);font-size:12px"></div>
+        <div class="field" style="margin-bottom:8px"><label>Longitude</label><input id="mc-lng-loja" type="number" step="any" placeholder="-49.2648" autocomplete="off" style="font-family:var(--font-mono);font-size:12px"></div>
+      </div>
+      <div class="row2" style="gap:8px">
+        <div class="field" style="margin-bottom:8px"><label>WhatsApp da loja</label><input id="mc-whatsapp-loja" type="tel" placeholder="62999999999" autocomplete="off"></div>
+        <div class="field" style="margin-bottom:8px"><label>Taxa entrega sugerida (R$)</label><input id="mc-taxa-entrega" type="number" step="0.01" placeholder="8.00" autocomplete="off" style="font-family:var(--font-mono);font-size:12px"></div>
+      </div>
+    </div>
     <div class="field" style="margin-bottom:10px"><label>Observações</label><textarea id="mc-obs" placeholder="Notas sobre o cliente..." style="min-height:50px"></textarea></div>
     <div class="field" style="margin-bottom:10px"><label>🖼️ Chave ImgBB (API Key)</label><input id="mc-imgbb" placeholder="Ex: c65e13c68f64617980e9f0b50b4be8d9" autocomplete="off" style="font-family:var(--font-mono);font-size:12px"><div style="font-size:11px;color:var(--muted);margin-top:4px">Crie uma chave gratuita em <a href="https://imgbb.com" target="_blank" style="color:var(--accent)">imgbb.com</a> → API → Add API key</div></div>
     <div class="modal-actions">
@@ -506,6 +537,7 @@ input,select,textarea{font-family:var(--font-body);outline:none}
       <button class="nav-btn" onclick="goPan('alerts')" id="nav-alerts"><span class="ni">🔔</span> Alertas</button>
       <button class="nav-btn" onclick="goPan('licenses')" id="nav-licenses"><span class="ni">🔒</span> Bloqueios</button>
       <button class="nav-btn" onclick="goPan('apps')" id="nav-apps"><span class="ni">📦</span> Apps</button>
+      <button class="nav-btn" onclick="goPan('motoboys')" id="nav-motoboys"><span class="ni">🛵</span> Motoboys</button>
       <div class="nav-sep"></div>
       <button class="nav-btn" onclick="goPan('settings')" id="nav-settings"><span class="ni">⚙️</span> Configurações</button>
     </div>
@@ -561,6 +593,37 @@ input,select,textarea{font-family:var(--font-body);outline:none}
         <div class="apps-grid" id="apps-panel-grid"></div>
       </div>
 
+      <!-- MOTOBOYS -->
+      <div class="panel" id="pan-motoboys">
+        <div class="section-head">
+          <div class="section-title">🛵 Motoboys</div>
+          <button class="btn btn-ghost btn-sm" onclick="loadMotoboys()">↻ Atualizar</button>
+        </div>
+        <!-- URL do App Motoboy -->
+        <div class="settings-card" style="margin-bottom:16px">
+          <div class="settings-title" style="font-size:13px">🔗 Link do App Motoboy</div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <input id="cfg-motoboy-url" placeholder="https://seu-app-motoboy.netlify.app"
+              style="flex:1;min-width:180px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 12px;color:var(--text);font-size:13px;font-family:var(--font-mono)">
+            <button class="btn btn-primary btn-sm" onclick="saveMotoyboyUrl()">Salvar</button>
+            <button class="btn btn-ghost btn-sm" onclick="copyMotoboyUrl()" id="mb-copy-btn">📋 Copiar</button>
+            <button class="btn btn-ghost btn-sm" onclick="shareMotoboyWhats()">📲 WhatsApp</button>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:6px">Link enviado para os motoboys se cadastrarem no sistema.</div>
+        </div>
+        <!-- Filtro -->
+        <div class="search-row" style="margin-bottom:14px">
+          <input class="search-in" id="mb-q" placeholder="🔍 Buscar por nome ou telefone..." oninput="renderMotoboys()">
+          <select class="filter-sel" id="mb-f" onchange="renderMotoboys()">
+            <option value="all">Todos</option>
+            <option value="pending">Pendentes</option>
+            <option value="approved">Aprovados</option>
+            <option value="blocked">Bloqueados</option>
+          </select>
+        </div>
+        <div id="motoboys-list"><div class="empty"><div class="empty-ico">🛵</div><div class="empty-txt">Clique em Atualizar para carregar</div></div></div>
+      </div>
+
       <!-- SETTINGS -->
       <div class="panel" id="pan-settings">
         <div class="settings-card">
@@ -574,6 +637,11 @@ input,select,textarea{font-family:var(--font-body);outline:none}
             <label>📞 WhatsApp do Suporte</label>
             <input id="cfg-support-phone" placeholder="11999999999" type="tel" inputmode="numeric" maxlength="13">
             <div class="field-hint">Número com DDD, sem espaços ou traços. Usado para o botão de suporte nos apps dos clientes.</div>
+          </div>
+          <div class="field" style="margin-top:12px">
+            <label>🛵 URL do App Motoboy</label>
+            <input id="cfg-motoboy-url-settings" placeholder="https://seu-app-motoboy.netlify.app" type="url">
+            <div class="field-hint">Link onde o app motoboy está hospedado. Usado para enviar aos motoboys via WhatsApp.</div>
           </div>
           <button class="btn btn-primary btn-sm" onclick="saveCfg()">Salvar</button>
         </div>
@@ -762,6 +830,26 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isSuperAdmin();
     }
+
+    // ─────────────────────────────────────────
+    // MOTOBOYS — privado, sem leitura pública
+    // ─────────────────────────────────────────
+
+    // Motoboy lê/escreve o próprio doc com PIN
+    // SuperAdmin lê e escreve tudo
+    match /motoboys/{motoboyId} {
+      allow read: if isSuperAdmin()
+        || (request.auth == null && resource.data.keys().hasOnly(['status','available','updatedAt']));
+      allow write: if isSuperAdmin();
+      // Auto-cadastro: apenas criação sem PIN (status pending)
+      allow create: if request.resource.data.status == "pending"
+        && request.resource.data.keys().hasAll(['nome','telefone','status','createdAt'])
+        && !('_pin' in request.resource.data);
+      // Motoboy atualiza próprio doc (localização, status) com PIN
+      allow update: if request.resource.data._auth == resource.data._pin
+        && resource.data._pin != ""
+        && resource.data.status != "blocked";
+    }
   }
 }</pre>
         </div>
@@ -782,7 +870,7 @@ service cloud.firestore {
     <button class="mn-btn active" onclick="goPan('dash')" id="mnav-dash"><span class="mi">📊</span>Dash</button>
     <button class="mn-btn" onclick="goPan('clients')" id="mnav-clients"><span class="mi">👥</span>Clientes</button>
     <button class="mn-btn" onclick="goPan('alerts')" id="mnav-alerts"><span class="mi">🔔</span>Alertas</button>
-    <button class="mn-btn" onclick="goPan('licenses')" id="mnav-licenses"><span class="mi">🔒</span>Bloqueios</button>
+    <button class="mn-btn" onclick="goPan('motoboys')" id="mnav-motoboys"><span class="mi">🛵</span>Motoboys</button>
     <button class="mn-btn" onclick="goPan('apps')" id="mnav-apps"><span class="mi">📦</span>Apps</button>
     <button class="mn-btn" onclick="goPan('settings')" id="mnav-settings"><span class="mi">⚙</span>Config</button>
   </div>
@@ -941,7 +1029,7 @@ function goPan(id){
   document.getElementById("pan-"+id).classList.add("active");
   document.querySelectorAll(".nav-btn,.mn-btn").forEach(b=>b.classList.remove("active"));
   ["nav-","mnav-"].forEach(p=>{const el=document.getElementById(p+id);if(el)el.classList.add("active");});
-  ({dash:renderDash,clients:renderClients,alerts:renderAlerts,licenses:renderLicenses,apps:renderAppsPanel,settings:loadCfg})[id]?.();
+  ({dash:renderDash,clients:renderClients,alerts:renderAlerts,licenses:renderLicenses,apps:renderAppsPanel,settings:loadCfg,motoboys:loadMotoboys})[id]?.();
 }
 
 /* ── UTILS ── */
@@ -976,7 +1064,7 @@ function closeModal(id){
 document.querySelectorAll(".modal-bg").forEach(el=>el.addEventListener("click",e=>{if(e.target===el)closeModal(el.id);}));
 
 /* ── REFRESH ── */
-function refreshAll(){updateTopbar();({dash:renderDash,clients:renderClients,alerts:renderAlerts,licenses:renderLicenses,apps:renderAppsPanel,settings:loadCfg})[currPan]?.();}
+function refreshAll(){updateTopbar();({dash:renderDash,clients:renderClients,alerts:renderAlerts,licenses:renderLicenses,apps:renderAppsPanel,settings:loadCfg,motoboys:loadMotoboys})[currPan]?.();}
 function updateTopbar(){const n=DB.clients.filter(c=>{const s=clientStatus(c);return s==="expiring"||s==="expired";}).length;const el=document.getElementById("tb-exp");if(el){el.textContent=`⚠ ${n} vencendo`;el.className="tb-badge"+(n>0?" warn":"");}const uel=document.getElementById("tb-user");if(uel&&window._authUser?.email){uel.textContent="👤 "+window._authUser.email;uel.style.display="";}else if(uel){uel.style.display="none";}}
 
 /* ── DASHBOARD ── */
@@ -1030,6 +1118,33 @@ function clientCardHTML(c){
       </div>
     </div>
   </div>`;
+}
+
+/* ── TOGGLE MOTOBOY ── */
+function toggleMotoboy(on){
+  const track=document.getElementById("mc-motoboy-track");
+  const thumb=document.getElementById("mc-motoboy-thumb");
+  const badge=document.getElementById("mc-motoboy-badge");
+  if(!track)return;
+  if(on){
+    track.style.background="var(--blue)";
+    thumb.style.left="23px";
+    badge.innerHTML='<span style="width:6px;height:6px;border-radius:50%;background:var(--blue);display:inline-block"></span> Ativado';
+    badge.style.background="rgba(26,127,196,.12)";
+    badge.style.color="var(--blue)";
+    badge.style.borderColor="rgba(26,127,196,.35)";
+  }else{
+    track.style.background="var(--border)";
+    thumb.style.left="3px";
+    badge.innerHTML='<span style="width:6px;height:6px;border-radius:50%;background:var(--muted);display:inline-block"></span> Desativado';
+    badge.style.background="rgba(107,107,136,.12)";
+    badge.style.color="var(--muted)";
+    badge.style.borderColor="var(--border)";
+  }
+}
+function _resetMotoboy(){
+  const cb=document.getElementById("mc-modulo-motoboy");
+  if(cb){cb.checked=false;toggleMotoboy(false);}
 }
 
 /* ── PASSWORD UI ── */
@@ -1142,6 +1257,15 @@ function openClientModal(id){
     document.getElementById("mc-obs").value=c.obs||"";
     document.getElementById("mc-imgbb").value=c.imgbbKey||"";
     document.getElementById("mc-status").value=c.status||"active";
+    // Campos de dados da loja (opcionais)
+    document.getElementById("mc-endereco-loja").value=c.enderecoLoja||"";
+    document.getElementById("mc-lat-loja").value=c.latLoja||"";
+    document.getElementById("mc-lng-loja").value=c.lngLoja||"";
+    document.getElementById("mc-whatsapp-loja").value=c.whatsappLoja||"";
+    document.getElementById("mc-taxa-entrega").value=c.taxaEntregaSugerida||"";
+    // Toggle módulo motoboy
+    const cbMoto=document.getElementById("mc-modulo-motoboy");
+    if(cbMoto){cbMoto.checked=!!c.moduloMotoboy;toggleMotoboy(!!c.moduloMotoboy);}
     sel.value=c.appId||"";
     document.getElementById("mc-del").style.display="inline-flex";
     // Libera download para reeditar
@@ -1164,7 +1288,8 @@ function openClientModal(id){
     document.getElementById("mc-zip-btn").disabled=true;
     document.getElementById("mc-zip-btn").style.opacity="0.5";
     document.getElementById("mc-template-file").value="";
-    ["mc-name","mc-phone","mc-price","mc-obs","mc-storename","mc-appurl","mc-imgbb","mc-fbprojectid"].forEach(id=>{const el=document.getElementById(id);if(el)el.value="";});
+    ["mc-name","mc-phone","mc-price","mc-obs","mc-storename","mc-appurl","mc-imgbb","mc-fbprojectid","mc-endereco-loja","mc-lat-loja","mc-lng-loja","mc-whatsapp-loja","mc-taxa-entrega"].forEach(id=>{const el=document.getElementById(id);if(el)el.value="";});
+    _resetMotoboy();;
     _resetPassFields();
     document.getElementById("mc-start").value=todayStr();
     const d=new Date();d.setDate(d.getDate()+30);document.getElementById("mc-due").value=d.toISOString().slice(0,10);
@@ -1192,10 +1317,19 @@ async function saveClient(){
   const status   = document.getElementById("mc-status").value;
   const imgbbKey = document.getElementById("mc-imgbb").value.trim();
   const fbProjectId = (document.getElementById("mc-fbprojectid")?.value||"").trim();
+  // Campos opcionais de dados da loja
+  const enderecoLoja = (document.getElementById("mc-endereco-loja")?.value||"").trim();
+  const latLoja = parseFloat(document.getElementById("mc-lat-loja")?.value)||null;
+  const lngLoja = parseFloat(document.getElementById("mc-lng-loja")?.value)||null;
+  const whatsappLoja = (document.getElementById("mc-whatsapp-loja")?.value||"").trim().replace(/\D/g,"");
+  const taxaEntregaSugerida = parseFloat(document.getElementById("mc-taxa-entrega")?.value)||null;
+  const moduloMotoboy = !!(document.getElementById("mc-modulo-motoboy")?.checked);
   const o={name,storeName,phone:document.getElementById("mc-phone").value.trim(),appId:appIdVal,
     price:parseFloat(document.getElementById("mc-price").value)||0,
     start:document.getElementById("mc-start").value,due:document.getElementById("mc-due").value,
-    obs:document.getElementById("mc-obs").value.trim(),imgbbKey,fbProjectId,status,active:["active","trial"].includes(status)};
+    obs:document.getElementById("mc-obs").value.trim(),imgbbKey,fbProjectId,
+    enderecoLoja,latLoja,lngLoja,whatsappLoja,taxaEntregaSugerida,moduloMotoboy,
+    status,active:["active","trial"].includes(status)};
 
   // ── EDIÇÃO de cliente existente ────────────────────────────────────────────
   if(editClientId){
@@ -2029,13 +2163,18 @@ async function saveSuportePass(){
 
 /* ── SETTINGS ── */
 function loadCfg(){
-  // cfg-user é hidden (exibe apenas email atual do usuário logado via Firebase Auth)
   const emailEl=document.getElementById("cfg-user");
   if(emailEl) emailEl.value=window._authUser?.email||DB.cfg.user||"";
   document.getElementById("cfg-pass").value="";
   document.getElementById("cfg-siteurl").value=DB.cfg.siteUrl||"";
   const spEl=document.getElementById("cfg-support-phone");
   if(spEl) spEl.value=DB.cfg.supportPhone||"";
+  // URL do App Motoboy — sincroniza os dois campos
+  const mbUrl=DB.cfg.motoboyUrl||"";
+  const mbEl=document.getElementById("cfg-motoboy-url-settings");
+  if(mbEl) mbEl.value=mbUrl;
+  const mbEl2=document.getElementById("cfg-motoboy-url");
+  if(mbEl2) mbEl2.value=mbUrl;
   // Core central
   const cfEl=document.getElementById("cfg-core-firebase");
   if(cfEl) cfEl.value=DB.cfg.coreFirebaseUrl||"";
@@ -2053,6 +2192,10 @@ async function saveCfg(){
   const supportPhone=(document.getElementById("cfg-support-phone")?.value||"").trim().replace(/\D/g,"");
   DB.cfg.siteUrl=siteUrl;
   DB.cfg.supportPhone=supportPhone;
+  DB.cfg.motoboyUrl=(document.getElementById("cfg-motoboy-url-settings")?.value||"").trim().replace(/\/$/,"");
+  // Sincroniza campo da aba Motoboys
+  const mbEl2=document.getElementById("cfg-motoboy-url");
+  if(mbEl2) mbEl2.value=DB.cfg.motoboyUrl;
   // Core central — salva as 3 fontes e a versão
   DB.cfg.coreFirebaseUrl=(document.getElementById("cfg-core-firebase")?.value||"").trim().replace(/\/$/,"");
   DB.cfg.coreGithubUrl  =(document.getElementById("cfg-core-github")?.value||"").trim().replace(/\/$/,"");
@@ -2082,6 +2225,188 @@ async function saveCfg(){
     return;
   }
   save();toast("Configurações salvas ✅");
+}
+
+/* ══════════════════════════════════════════
+   MOTOBOYS — Gestão completa no PEDIX
+   ══════════════════════════════════════════ */
+
+let _mbList = []; // cache local dos motoboys carregados
+
+function _genPin(){
+  return String(Math.floor(1000+Math.random()*9000));
+}
+
+/* Carrega todos os motoboys do Firestore */
+async function loadMotoboys(){
+  if(!window._FS){ toast("⚠ Firebase não conectado"); return; }
+  const el=document.getElementById("motoboys-list");
+  if(el) el.innerHTML=`<div class="empty"><div class="empty-ico" style="font-size:32px">⏳</div><div class="empty-txt">Carregando...</div></div>`;
+  try{
+    const{db,collection,getDocs}=window._FS;
+    const snap=await getDocs(collection(db,"motoboys"));
+    _mbList=snap.docs.map(d=>({id:d.id,...d.data()}));
+    renderMotoboys();
+  }catch(e){
+    toast("⚠ Erro ao carregar: "+e.message);
+    if(el) el.innerHTML=`<div class="empty"><div class="empty-ico">❌</div><div class="empty-txt">${e.message}</div></div>`;
+  }
+}
+
+/* Renderiza lista filtrada */
+function renderMotoboys(){
+  const q=(document.getElementById("mb-q")?.value||"").toLowerCase();
+  const f=document.getElementById("mb-f")?.value||"all";
+  let list=[..._mbList];
+  if(q) list=list.filter(m=>(m.nome||"").toLowerCase().includes(q)||(m.telefone||"").includes(q));
+  if(f!=="all") list=list.filter(m=>m.status===f);
+  list.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+
+  const el=document.getElementById("motoboys-list");
+  if(!el) return;
+  if(!list.length){
+    el.innerHTML=`<div class="empty"><div class="empty-ico">🛵</div><div class="empty-txt">Nenhum motoboy encontrado</div></div>`;
+    return;
+  }
+  el.innerHTML=list.map(m=>_mbCardHTML(m)).join("");
+}
+
+/* Card HTML de cada motoboy */
+function _mbCardHTML(m){
+  const statusCfg={
+    pending: {label:"Pendente",   cls:"tw", dot:"dot-o"},
+    approved:{label:"Aprovado",   cls:"ta", dot:"dot-g"},
+    blocked: {label:"Bloqueado",  cls:"te", dot:"dot-r"},
+  };
+  const s=statusCfg[m.status]||statusCfg.pending;
+  const online=m.available===true;
+  const pinDisplay=m._pin?`<span style="font-family:var(--font-mono);background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:2px 8px;font-size:12px;letter-spacing:2px">${m._pin}</span>`:`<span style="color:var(--muted);font-size:11px">sem PIN</span>`;
+
+  return `<div class="ccard" style="margin-bottom:10px">
+    <div class="cc-avatar" style="background:rgba(29,184,112,.15);color:var(--green);font-size:22px">🛵</div>
+    <div style="min-width:0">
+      <div class="cc-name">${m.nome||"—"}</div>
+      <div class="cc-app">📱 ${m.telefone||"—"} ${m.veiculo?`• ${m.veiculo}`:""}</div>
+      <div class="cc-meta" style="margin-top:4px">
+        <span class="cc-tag ${s.cls}"><span class="dot ${s.dot}"></span> ${s.label}</span>
+        ${m.status==="approved"?`<span class="cc-tag ${online?"ta":"ti"}"><span class="dot ${online?"dot-g":""}"></span> ${online?"Online":"Offline"}</span>`:""}
+        <span style="font-size:11px;color:var(--muted)">PIN: ${pinDisplay}</span>
+      </div>
+    </div>
+    <div class="cc-right" style="gap:6px;align-items:flex-end">
+      ${m.status==="pending"?`<button class="btn btn-green btn-sm" onclick="approveMotoboy('${m.id}')">✅ Aprovar</button>`:""}
+      ${m.status==="approved"?`<button class="btn btn-danger btn-sm" onclick="blockMotoboy('${m.id}')">🔴 Bloquear</button>`:""}
+      ${m.status==="blocked"?`<button class="btn btn-ghost btn-sm" onclick="approveMotoboy('${m.id}')">↩ Reativar</button>`:""}
+      <div style="display:flex;gap:6px;margin-top:4px">
+        <button class="icon-btn" onclick="resetMotoboyPin('${m.id}')" title="Gerar novo PIN">🔑</button>
+        ${m.telefone?`<button class="icon-btn iwa" onclick="waMotoboy('${m.id}')" title="WhatsApp">📲</button>`:""}
+        <button class="icon-btn del" onclick="deleteMotoboy('${m.id}')" title="Excluir">🗑</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* Aprovar motoboy — gera PIN se não tiver */
+async function approveMotoboy(id){
+  if(!window._FS){ toast("⚠ Firebase não conectado"); return; }
+  const m=_mbList.find(x=>x.id===id);
+  if(!m) return;
+  const pin=m._pin||_genPin();
+  try{
+    const{db,doc,setDoc}=window._FS;
+    await setDoc(doc(db,"motoboys",id),{status:"approved",_pin:pin,approvedAt:Date.now()},{merge:true});
+    m.status="approved"; m._pin=pin;
+    renderMotoboys();
+    toast(`✅ Motoboy aprovado! PIN: ${pin}`);
+  }catch(e){ toast("⚠ Erro: "+e.message); }
+}
+
+/* Bloquear motoboy */
+async function blockMotoboy(id){
+  if(!window._FS){ toast("⚠ Firebase não conectado"); return; }
+  const m=_mbList.find(x=>x.id===id);
+  if(!m) return;
+  if(!confirm(`Bloquear "${m.nome}"?`)) return;
+  try{
+    const{db,doc,setDoc}=window._FS;
+    await setDoc(doc(db,"motoboys",id),{status:"blocked",available:false,blockedAt:Date.now()},{merge:true});
+    m.status="blocked"; m.available=false;
+    renderMotoboys();
+    toast("🔴 Motoboy bloqueado!");
+  }catch(e){ toast("⚠ Erro: "+e.message); }
+}
+
+/* Gerar novo PIN */
+async function resetMotoboyPin(id){
+  if(!window._FS){ toast("⚠ Firebase não conectado"); return; }
+  const m=_mbList.find(x=>x.id===id);
+  if(!m){ toast("Motoboy não encontrado ❌"); return; }
+  if(!confirm(`Gerar novo PIN para "${m.nome}"? O PIN antigo será invalidado.`)) return;
+  const pin=_genPin();
+  try{
+    const{db,doc,setDoc}=window._FS;
+    await setDoc(doc(db,"motoboys",id),{_pin:pin,pinResetAt:Date.now()},{merge:true});
+    m._pin=pin;
+    renderMotoboys();
+    toast(`🔑 Novo PIN: ${pin}`);
+  }catch(e){ toast("⚠ Erro: "+e.message); }
+}
+
+/* Excluir motoboy */
+async function deleteMotoboy(id){
+  if(!window._FS){ toast("⚠ Firebase não conectado"); return; }
+  const m=_mbList.find(x=>x.id===id);
+  if(!m) return;
+  if(!confirm(`Excluir "${m.nome}"? Esta ação não pode ser desfeita.`)) return;
+  try{
+    const{db,doc,deleteDoc}=window._FS;
+    await deleteDoc(doc(db,"motoboys",id));
+    _mbList=_mbList.filter(x=>x.id!==id);
+    renderMotoboys();
+    toast("🗑 Motoboy excluído!");
+  }catch(e){ toast("⚠ Erro: "+e.message); }
+}
+
+/* WhatsApp para motoboy com PIN e link do app */
+function waMotoboy(id){
+  const m=_mbList.find(x=>x.id===id);
+  if(!m||!m.telefone) return;
+  const url=DB.cfg.motoboyUrl||"";
+  const pin=m._pin||"(sem PIN)";
+  const msg=encodeURIComponent(
+    `Olá ${m.nome}! 👋\n\n`+
+    `Seu acesso ao app de entregas foi ${m.status==="approved"?"aprovado":"atualizado"}.\n\n`+
+    `🔗 App: ${url||"(configure a URL do app nas configurações)"}\n`+
+    `🔑 PIN: *${pin}*\n\n`+
+    `Guarde seu PIN com segurança. Ele é usado para fazer login no app.`
+  );
+  window.open(`https://wa.me/${m.telefone.replace(/\D/g,"")}?text=${msg}`,"_blank");
+}
+
+/* Salvar URL do app motoboy pela aba Motoboys */
+function saveMotoyboyUrl(){
+  const url=(document.getElementById("cfg-motoboy-url")?.value||"").trim().replace(/\/$/,"");
+  DB.cfg.motoboyUrl=url;
+  // Sincroniza campo de configurações
+  const el=document.getElementById("cfg-motoboy-url-settings");
+  if(el) el.value=url;
+  save();
+  toast("✅ URL do app motoboy salva!");
+}
+
+/* Copiar URL */
+function copyMotoboyUrl(){
+  const url=DB.cfg.motoboyUrl||document.getElementById("cfg-motoboy-url")?.value||"";
+  if(!url){ toast("Configure a URL primeiro ❌"); return; }
+  navigator.clipboard.writeText(url).then(()=>toast("📋 Link copiado!")).catch(()=>toast("Selecione e copie manualmente"));
+}
+
+/* Compartilhar URL via WhatsApp */
+function shareMotoboyWhats(){
+  const url=DB.cfg.motoboyUrl||document.getElementById("cfg-motoboy-url")?.value||"";
+  if(!url){ toast("Configure a URL primeiro ❌"); return; }
+  const msg=encodeURIComponent(`🛵 Cadastre-se como motoboy parceiro:\n${url}`);
+  window.open(`https://wa.me/?text=${msg}`,"_blank");
 }
 
 /* ── BACKUP ── */
