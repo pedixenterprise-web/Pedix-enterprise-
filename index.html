@@ -453,14 +453,82 @@ input,select,textarea{font-family:var(--font-body);outline:none}
         <span style="width:6px;height:6px;border-radius:50%;background:var(--muted);display:inline-block"></span> Desativado
       </div>
       <!-- Campos da loja -->
-      <div class="field" style="margin-bottom:8px"><label>Endereço da loja</label><input id="mc-endereco-loja" placeholder="Rua X, 123 - Centro" autocomplete="off"></div>
+      <!-- CEP -->
+      <div class="field" style="margin-bottom:8px">
+        <label>CEP da loja</label>
+        <div style="display:flex;gap:6px">
+          <input id="mc-cep-loja" placeholder="00000-000" maxlength="9" inputmode="numeric"
+            autocomplete="off" style="flex:1;font-family:var(--font-mono);font-size:13px"
+            oninput="maskCepLoja(this)" onkeyup="if(this.value.replace(/\D/g,'').length===8)fetchCepLoja()">
+          <button class="btn btn-ghost btn-sm" onclick="fetchCepLoja()" style="flex-shrink:0">🔍 Buscar</button>
+        </div>
+        <div id="mc-cep-status" style="font-size:11px;color:var(--muted);margin-top:4px;min-height:14px"></div>
+      </div>
+      <!-- Endereço + Número -->
       <div class="row2" style="gap:8px">
-        <div class="field" style="margin-bottom:8px"><label>Latitude</label><input id="mc-lat-loja" type="number" step="any" placeholder="-16.6869" autocomplete="off" style="font-family:var(--font-mono);font-size:12px"></div>
-        <div class="field" style="margin-bottom:8px"><label>Longitude</label><input id="mc-lng-loja" type="number" step="any" placeholder="-49.2648" autocomplete="off" style="font-family:var(--font-mono);font-size:12px"></div>
+        <div class="field" style="margin-bottom:8px;flex:2">
+          <label>Logradouro</label>
+          <input id="mc-endereco-loja" placeholder="Rua das Flores" autocomplete="off">
+        </div>
+        <div class="field" style="margin-bottom:8px;flex:1">
+          <label>Número</label>
+          <input id="mc-numero-loja" placeholder="123" autocomplete="off" style="font-family:var(--font-mono)">
+        </div>
+      </div>
+      <!-- Complemento -->
+      <div class="field" style="margin-bottom:8px">
+        <label>Complemento <span style="font-size:10px;color:var(--muted);font-weight:400">(opcional)</span></label>
+        <input id="mc-comp-loja" placeholder="Sala 2, Loja A..." autocomplete="off">
+      </div>
+      <!-- Bairro + Cidade + Estado -->
+      <div class="row2" style="gap:8px">
+        <div class="field" style="margin-bottom:8px">
+          <label>Bairro</label>
+          <input id="mc-bairro-loja" placeholder="Centro" autocomplete="off">
+        </div>
+        <div class="field" style="margin-bottom:8px">
+          <label>Cidade</label>
+          <input id="mc-cidade-loja" placeholder="Goiânia" autocomplete="off">
+        </div>
       </div>
       <div class="row2" style="gap:8px">
-        <div class="field" style="margin-bottom:8px"><label>WhatsApp da loja</label><input id="mc-whatsapp-loja" type="tel" placeholder="62999999999" autocomplete="off"></div>
-        <div class="field" style="margin-bottom:8px"><label>Taxa entrega sugerida (R$)</label><input id="mc-taxa-entrega" type="number" step="0.01" placeholder="8.00" autocomplete="off" style="font-family:var(--font-mono);font-size:12px"></div>
+        <div class="field" style="margin-bottom:8px;flex:1">
+          <label>Estado (UF)</label>
+          <input id="mc-uf-loja" placeholder="GO" maxlength="2" autocomplete="off" style="font-family:var(--font-mono);text-transform:uppercase">
+        </div>
+        <div class="field" style="margin-bottom:8px;flex:2">
+          <label>WhatsApp da loja</label>
+          <input id="mc-whatsapp-loja" type="tel" placeholder="62999999999" autocomplete="off">
+        </div>
+      </div>
+      <!-- Lat/Lng manual -->
+      <div style="background:rgba(0,0,0,.15);border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px">
+        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">📍 Coordenadas da loja <span style="font-weight:400;text-transform:none;color:var(--muted)">(para cálculo de distância)</span></div>
+        <div class="row2" style="gap:8px;margin-bottom:8px">
+          <div class="field" style="margin-bottom:0">
+            <label>Latitude</label>
+            <input id="mc-lat-loja" type="number" step="any" placeholder="-16.6869" autocomplete="off" style="font-family:var(--font-mono);font-size:12px">
+          </div>
+          <div class="field" style="margin-bottom:0">
+            <label>Longitude</label>
+            <input id="mc-lng-loja" type="number" step="any" placeholder="-49.2648" autocomplete="off" style="font-family:var(--font-mono);font-size:12px">
+          </div>
+        </div>
+        <!-- Tutorial Google Maps -->
+        <div style="background:rgba(26,127,196,.08);border:1px solid rgba(26,127,196,.2);border-radius:8px;padding:8px 10px;font-size:11px;color:var(--muted);line-height:1.7">
+          🗺️ <strong style="color:var(--blue)">Como pegar as coordenadas:</strong><br>
+          1. Acesse <a href="https://maps.google.com" target="_blank" style="color:var(--blue)">maps.google.com</a><br>
+          2. Navegue até o endereço exato da loja<br>
+          3. Clique com botão direito no local<br>
+          4. Copie os números que aparecem no topo<br>
+          5. Cole nos campos Latitude e Longitude acima
+        </div>
+      </div>
+      <!-- Taxa mínima -->
+      <div class="field" style="margin-bottom:8px">
+        <label>Taxa mínima de entrega (R$)</label>
+        <input id="mc-taxa-entrega" type="number" step="0.01" placeholder="6.00" autocomplete="off" style="font-family:var(--font-mono);font-size:12px">
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">Valor mínimo cobrado mesmo em distâncias curtas.</div>
       </div>
     </div>
     <div class="field" style="margin-bottom:10px"><label>Observações</label><textarea id="mc-obs" placeholder="Notas sobre o cliente..." style="min-height:50px"></textarea></div>
@@ -1120,6 +1188,41 @@ function clientCardHTML(c){
   </div>`;
 }
 
+/* ── CEP LOJA ── */
+function maskCepLoja(el){
+  let v=el.value.replace(/\D/g,"");
+  if(v.length>5) v=v.slice(0,5)+"-"+v.slice(5,8);
+  el.value=v;
+}
+async function fetchCepLoja(){
+  const cep=(document.getElementById("mc-cep-loja")?.value||"").replace(/\D/g,"");
+  const st=document.getElementById("mc-cep-status");
+  if(!st) return;
+  if(cep.length!==8){st.textContent="CEP inválido ❌";st.style.color="var(--danger)";return;}
+  st.textContent="🔍 Buscando...";st.style.color="var(--muted)";
+  try{
+    const res=await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+    const d=await res.json();
+    if(d.erro){st.textContent="CEP não encontrado ❌";st.style.color="var(--danger)";return;}
+    // Preenche campos automaticamente
+    const logr=document.getElementById("mc-endereco-loja");
+    const bair=document.getElementById("mc-bairro-loja");
+    const cid=document.getElementById("mc-cidade-loja");
+    const uf=document.getElementById("mc-uf-loja");
+    if(logr && d.logradouro) logr.value=d.logradouro;
+    if(bair && d.bairro) bair.value=d.bairro;
+    if(cid && d.localidade) cid.value=d.localidade;
+    if(uf && d.uf) uf.value=d.uf.toUpperCase();
+    st.textContent=`✅ ${d.localidade} - ${d.uf}`;
+    st.style.color="var(--green)";
+    // Foca no campo número
+    document.getElementById("mc-numero-loja")?.focus();
+  }catch(e){
+    st.textContent="Erro ao buscar CEP. Verifique conexão.";
+    st.style.color="var(--danger)";
+  }
+}
+
 /* ── TOGGLE MOTOBOY ── */
 function toggleMotoboy(on){
   const track=document.getElementById("mc-motoboy-track");
@@ -1257,12 +1360,19 @@ function openClientModal(id){
     document.getElementById("mc-obs").value=c.obs||"";
     document.getElementById("mc-imgbb").value=c.imgbbKey||"";
     document.getElementById("mc-status").value=c.status||"active";
-    // Campos de dados da loja (opcionais)
+    // Campos de dados da loja
+    document.getElementById("mc-cep-loja").value=c.cepLoja||"";
     document.getElementById("mc-endereco-loja").value=c.enderecoLoja||"";
+    document.getElementById("mc-numero-loja").value=c.numeroLoja||"";
+    document.getElementById("mc-comp-loja").value=c.compLoja||"";
+    document.getElementById("mc-bairro-loja").value=c.bairroLoja||"";
+    document.getElementById("mc-cidade-loja").value=c.cidadeLoja||"";
+    document.getElementById("mc-uf-loja").value=c.ufLoja||"";
     document.getElementById("mc-lat-loja").value=c.latLoja||"";
     document.getElementById("mc-lng-loja").value=c.lngLoja||"";
     document.getElementById("mc-whatsapp-loja").value=c.whatsappLoja||"";
-    document.getElementById("mc-taxa-entrega").value=c.taxaEntregaSugerida||"";
+    document.getElementById("mc-taxa-entrega").value=c.taxaEntregaMinima||"";
+    document.getElementById("mc-cep-status").textContent="";
     // Toggle módulo motoboy
     const cbMoto=document.getElementById("mc-modulo-motoboy");
     if(cbMoto){cbMoto.checked=!!c.moduloMotoboy;toggleMotoboy(!!c.moduloMotoboy);}
@@ -1288,7 +1398,10 @@ function openClientModal(id){
     document.getElementById("mc-zip-btn").disabled=true;
     document.getElementById("mc-zip-btn").style.opacity="0.5";
     document.getElementById("mc-template-file").value="";
-    ["mc-name","mc-phone","mc-price","mc-obs","mc-storename","mc-appurl","mc-imgbb","mc-fbprojectid","mc-endereco-loja","mc-lat-loja","mc-lng-loja","mc-whatsapp-loja","mc-taxa-entrega"].forEach(id=>{const el=document.getElementById(id);if(el)el.value="";});
+    ["mc-name","mc-phone","mc-price","mc-obs","mc-storename","mc-appurl","mc-imgbb","mc-fbprojectid",
+     "mc-cep-loja","mc-endereco-loja","mc-numero-loja","mc-comp-loja","mc-bairro-loja","mc-cidade-loja","mc-uf-loja",
+     "mc-lat-loja","mc-lng-loja","mc-whatsapp-loja","mc-taxa-entrega"].forEach(id=>{const el=document.getElementById(id);if(el)el.value="";});
+    const cepSt=document.getElementById("mc-cep-status");if(cepSt)cepSt.textContent="";
     _resetMotoboy();;
     _resetPassFields();
     document.getElementById("mc-start").value=todayStr();
@@ -1317,18 +1430,27 @@ async function saveClient(){
   const status   = document.getElementById("mc-status").value;
   const imgbbKey = document.getElementById("mc-imgbb").value.trim();
   const fbProjectId = (document.getElementById("mc-fbprojectid")?.value||"").trim();
-  // Campos opcionais de dados da loja
+  // Campos de dados da loja
+  const cepLoja      = (document.getElementById("mc-cep-loja")?.value||"").replace(/\D/g,"");
   const enderecoLoja = (document.getElementById("mc-endereco-loja")?.value||"").trim();
-  const latLoja = parseFloat(document.getElementById("mc-lat-loja")?.value)||null;
-  const lngLoja = parseFloat(document.getElementById("mc-lng-loja")?.value)||null;
+  const numeroLoja   = (document.getElementById("mc-numero-loja")?.value||"").trim();
+  const compLoja     = (document.getElementById("mc-comp-loja")?.value||"").trim();
+  const bairroLoja   = (document.getElementById("mc-bairro-loja")?.value||"").trim();
+  const cidadeLoja   = (document.getElementById("mc-cidade-loja")?.value||"").trim();
+  const ufLoja       = (document.getElementById("mc-uf-loja")?.value||"").trim().toUpperCase();
+  const latLoja      = parseFloat(document.getElementById("mc-lat-loja")?.value)||null;
+  const lngLoja      = parseFloat(document.getElementById("mc-lng-loja")?.value)||null;
   const whatsappLoja = (document.getElementById("mc-whatsapp-loja")?.value||"").trim().replace(/\D/g,"");
-  const taxaEntregaSugerida = parseFloat(document.getElementById("mc-taxa-entrega")?.value)||null;
+  const taxaEntregaMinima = parseFloat(document.getElementById("mc-taxa-entrega")?.value)||null;
+  // Endereço completo montado automaticamente
+  const enderecoLojaCompleto=[enderecoLoja,numeroLoja,compLoja,bairroLoja,cidadeLoja,ufLoja].filter(Boolean).join(", ");
   const moduloMotoboy = !!(document.getElementById("mc-modulo-motoboy")?.checked);
   const o={name,storeName,phone:document.getElementById("mc-phone").value.trim(),appId:appIdVal,
     price:parseFloat(document.getElementById("mc-price").value)||0,
     start:document.getElementById("mc-start").value,due:document.getElementById("mc-due").value,
     obs:document.getElementById("mc-obs").value.trim(),imgbbKey,fbProjectId,
-    enderecoLoja,latLoja,lngLoja,whatsappLoja,taxaEntregaSugerida,moduloMotoboy,
+    cepLoja,enderecoLoja,numeroLoja,compLoja,bairroLoja,cidadeLoja,ufLoja,
+    enderecoLojaCompleto,latLoja,lngLoja,whatsappLoja,taxaEntregaMinima,moduloMotoboy,
     status,active:["active","trial"].includes(status)};
 
   // ── EDIÇÃO de cliente existente ────────────────────────────────────────────
