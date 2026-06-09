@@ -1421,6 +1421,40 @@ function _getTemplateKey(appName){
   if(n.includes("pet") || n.includes("animal") || n.includes("dog") || n.includes("cat") || n.includes("vet")) return "petshop";
   return null;
 }
+/* ── SYNC ENDEREÇO → APPDATA/MAIN (consumido pelo app Motoboy) ──
+   Chamado sempre que o cliente é salvo.
+   - moduloMotoboy=true  → grava endereço completo em appdata/main
+   - moduloMotoboy=false → remove campos de endereço de appdata/main         */
+async function _syncMotoboyAddress(tenantId, o){
+  if(!window._FS) return;
+  const{db,doc,setDoc}=window._FS;
+  try{
+    // Endereço da loja vai SEMPRE para appdata/main —
+    // tanto o app do logista quanto o app Motoboy precisam dele para calcular frete.
+    // moduloMotoboy só informa se o app Motoboy está autorizado (true/false).
+    await setDoc(doc(db,"tenants",tenantId,"appdata","main"),{
+      moduloMotoboy: !!o.moduloMotoboy,
+      loja: {
+        cep             : o.cepLoja             || "",
+        endereco        : o.enderecoLoja         || "",
+        numero          : o.numeroLoja           || "",
+        complemento     : o.compLoja             || "",
+        bairro          : o.bairroLoja           || "",
+        cidade          : o.cidadeLoja           || "",
+        uf              : o.ufLoja               || "",
+        enderecoCompleto: o.enderecoLojaCompleto || "",
+        lat             : o.latLoja              || null,
+        lng             : o.lngLoja              || null,
+        whatsapp        : o.whatsappLoja         || "",
+        taxaEntregaMinima: o.taxaEntregaMinima   || null,
+      },
+      _ts: Date.now()
+    },{merge:true});
+  }catch(e){
+    console.warn("[Pedix] _syncMotoboyAddress error:", e.message);
+  }
+}
+
 async function saveClient(){
   const name     = document.getElementById("mc-name").value.trim();
   const storeName= document.getElementById("mc-storename").value.trim();
@@ -1485,6 +1519,8 @@ async function saveClient(){
         // Salva todos os campos incluindo imgbbKey explicitamente
         await setDoc(doc(db,"tenants",editClientId),{...o,imgbbKey,updatedAt:Date.now()},{merge:true});
       }catch(e){ toast("⚠ Erro ao salvar no Firebase: "+e.message); }
+      // Sincroniza endereço com appdata/main para o app Motoboy consumir
+      await _syncMotoboyAddress(editClientId, o);
     }
     save();refreshAll();
     btn.dataset.saving="0";btn.disabled=false;btn.textContent="💾 Salvar";
@@ -1524,6 +1560,8 @@ async function saveClient(){
       _auth:adminPass,
       _ts:Date.now()
     },{merge:true});
+    // Sincroniza endereço com appdata/main para o app Motoboy consumir
+    await _syncMotoboyAddress(tenantId, o);
     DB.clients.push({id:tenantId,...tenantData,masterPass:adminPass});
     save();refreshAll();
     // Prepara variáveis para geração do ZIP
@@ -1690,9 +1728,33 @@ async function downloadZip(){
 
   if(!adminPass){toast("⚠ Senha mestre não encontrada — edite o cliente e informe a senha");return;}
 
+  // Busca dados frescos do tenant no Firestore para garantir lat/lng atualizados
+  if(window._FS){
+    try{
+      const{db,doc,getDoc}=window._FS;
+      const tSnap=await getDoc(doc(db,"tenants",tenantId));
+      if(tSnap.exists()){
+        const fresh=tSnap.data();
+        // Atualiza clientInDB com dados mais recentes
+        if(clientInDB){
+          clientInDB.latLoja            = fresh.latLoja            ?? clientInDB.latLoja;
+          clientInDB.lngLoja            = fresh.lngLoja            ?? clientInDB.lngLoja;
+          clientInDB.enderecoLojaCompleto = fresh.enderecoLojaCompleto ?? clientInDB.enderecoLojaCompleto;
+          clientInDB.taxaEntregaMinima  = fresh.taxaEntregaMinima  ?? clientInDB.taxaEntregaMinima;
+          clientInDB.moduloMotoboy      = fresh.moduloMotoboy      ?? clientInDB.moduloMotoboy;
+        }
+      }
+    }catch(e){ console.warn("[ZIP] Não foi possível buscar dados frescos do tenant:", e.message); }
+  }
+
   const appKey=window._currentAppKey||"burger";
   if(!window._currentAppKey){
     toast("⚠ Tipo de app não identificado — usando ícone Burger como padrão",4000);
+  }
+
+  // Avisa se lat/lng não estiver cadastrado (entrega não vai calcular distância)
+  if(!clientInDB?.latLoja || !clientInDB?.lngLoja){
+    toast("⚠ Atenção: Latitude/Longitude da loja não cadastrada. O cálculo de entrega não funcionará.",5000);
   }
   const btn=document.getElementById("mc-zip-btn");
   btn.disabled=true;btn.textContent="⏳ Gerando ZIP...";
@@ -1766,6 +1828,16 @@ async function downloadZip(){
   window._TENANT_ROOT    = "tenants/"  + CLIENTE_ID;
 
   // masterPass injetada via placeholder __MASTER_PASS__ no HTML
+
+  /* ═══════════════════════════════════════════════════════════════
+     DADOS DO ESTABELECIMENTO — injetados pelo gestor, somente leitura
+     Não editáveis pelo lojista — alterações apenas via PEDIX
+     ═══════════════════════════════════════════════════════════════ */
+  window._LOGISTA_LAT          = ${clientInDB?.latLoja||null};
+  window._LOGISTA_LNG          = ${clientInDB?.lngLoja||null};
+  window._LOGISTA_ENDERECO     = ${JSON.stringify(clientInDB?.enderecoLojaCompleto||"")};
+  window._DELIVERY_MIN_VALUE   = ${clientInDB?.taxaEntregaMinima||0};
+  window._MODULO_MOTOBOY       = ${clientInDB?.moduloMotoboy?true:false};
 
   /* ═══════════════════════════════════════════════════════════════
      PEDIX CORE LOADER — Atualização centralizada automática
